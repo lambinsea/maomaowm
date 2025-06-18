@@ -32,19 +32,56 @@ struct {
 	} on;
 } workspaces;
 
+
+/*
+ * update_focus should normally be set to true. It is set to false only
+ * when this function is called from desktop_focus_view(), in order to
+ * avoid unnecessary extra focus changes and possible recursion.
+ */
+void
+workspaces_switch_to(struct workspace *target, bool update_focus)
+{
+	assert(target);
+	if (target == workspaces.current) {
+		return;
+	}
+
+	/* Disable the old workspace */
+	wlr_scene_node_set_enabled(
+		&workspaces.current->tree->node, false);
+
+	dwl_ext_workspace_set_active(
+		workspaces.current->ext_workspace, false);
+
+
+	unsigned int tag;
+	tag = 1<<(target->tag-1);
+	if(target->tag == 0) {
+		toggleoverview(&(Arg){.i = -1});
+		return;
+	} else {
+		view(&(Arg){.ui = tag}, true);
+	}
+
+
+	/* Enable the new workspace */
+	wlr_scene_node_set_enabled(&target->tree->node, true);
+
+	/* Save the last visited workspace */
+	workspaces.last = workspaces.current;
+
+	/* Make sure new views will spawn on the new workspace */
+	workspaces.current = target;
+
+	dwl_ext_workspace_set_active(target->ext_workspace, true);
+}
+
 /* ext workspace handlers */
 static void
 handle_ext_workspace_activate(struct wl_listener *listener, void *data)
 {
 	struct workspace *workspace = wl_container_of(listener, workspace, on_ext.activate);
-	unsigned int target;
-	target = 1<<(workspace->tag-1);
-	if(workspace->tag == 0) {
-		toggleoverview(&(Arg){.i = -1});
-		return;
-	} else {
-		view(&(Arg){.ui = target}, true);
-	}
+	workspaces_switch_to(workspace, /* update_focus */ true);
 	wlr_log(WLR_INFO, "ext activating workspace %s", workspace->name);
 }
 
@@ -89,7 +126,7 @@ add_workspace(int tag)
 	struct workspace *workspace = znew(*workspace);
 	workspace->name = xstrdup(name);
 	workspace->tag = tag;
-	workspace->tree = wlr_scene_tree_create(&scene->tree);
+	workspace->tree = wlr_scene_tree_create(ws_tree);
 	wl_list_append(&workspaces.all, &workspace->link);
 	if (!workspaces.current) {
 		workspaces.current = workspace;
