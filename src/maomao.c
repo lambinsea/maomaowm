@@ -3488,6 +3488,8 @@ void createmon(struct wl_listener *listener, void *data) {
 		wlr_output_layout_add_auto(output_layout, wlr_output);
 	else
 		wlr_output_layout_add(output_layout, wlr_output, m->m.x, m->m.y);
+	dwl_ext_workspace_group_output_enter(
+		workspaces.ext_group, m->wlr_output);
 }
 
 void // fix for 0.5
