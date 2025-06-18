@@ -4,12 +4,13 @@
 #include <assert.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/util/log.h>
-#include "common/array.h"
-#include "common/mem.h"
-#include "common/list.h"
+#include "../common/array.h"
+#include "../common/mem.h"
+#include "../common/list.h"
 #include "ext-workspace-v1-protocol.h"
 #include "ext-workspace.h"
 #include "ext-workspace-internal.h"
+#include "transaction-addon.h"
 
 /*
  *	.--------------------.

@@ -5,7 +5,7 @@
 #include <wlr/types/wlr_output.h>
 #include <wlr/util/log.h>
 #include "../common/mem.h"
-#include "../ext-workspace-v1-protocol.h"
+#include "ext-workspace-v1-protocol.h"
 #include "ext-workspace.h"
 #include "ext-workspace-internal.h"
 

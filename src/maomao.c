@@ -818,6 +818,7 @@ static struct wlr_xwayland *xwayland;
 #include "config/parse_config.h"
 #include "layout/layout.h"
 #include "text_input/ime.h"
+#include "ext-workspace/tag-worksapce.h"
 
 struct vec2 calculate_animation_curve_at(double t, int type) {
 	struct vec2 point;
@@ -6620,6 +6621,8 @@ void setup(void) {
 		wlr_xdg_foreign_registry_create(dpy);
 	wlr_xdg_foreign_v1_create(dpy, foreign_registry);
 	wlr_xdg_foreign_v2_create(dpy, foreign_registry);
+
+	workspaces_init();
 #ifdef XWAYLAND
 	/*
 	 * Initialise the XWayland X server.
