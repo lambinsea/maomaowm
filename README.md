@@ -91,7 +91,7 @@ yay -S pamixer lavalauncher-mao-git wlr-dpms sway-audio-idle-inhibit-git swayidl
 [swaync](https://github.com/DreamMaoMao/dotfile/tree/main/swaync)
 
 ## Config Document
-Refer to [wiki](https://github.com/DreamMaoMao/maomaowm/wiki/)
+Refer to the [wiki](https://github.com/DreamMaoMao/maomaowm/wiki/)
 
 
 # NixOS + Home-manager
