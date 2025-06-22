@@ -191,7 +191,7 @@ struct dwl_animation {
 	struct wlr_box current;
 	int action;
 };
-
+struct Monitor;
 typedef struct Pertag Pertag;
 typedef struct Monitor Monitor;
 struct wlr_foreign_toplevel_handle_v1;
@@ -384,6 +384,7 @@ struct Monitor {
 	int gamma_lut_changed;
 	int asleep;
 	unsigned int visible_clients;
+	struct dwl_ext_workspace_group *ext_group;
 };
 
 typedef struct {
@@ -617,6 +618,7 @@ static bool check_hit_no_border(Client *c);
 static void reset_keyboard_layout(void);
 static void client_update_oldmonname_record(Client *c, Monitor *m);
 static void pending_kill_client(Client *c);
+static unsigned int get_tags_first_tag_num(unsigned int source_tags);
 
 #include "data/static_keymap.h"
 #include "dispatch/dispatch.h"
@@ -2884,6 +2886,11 @@ void cleanupmon(struct wl_listener *listener, void *data) {
 			wlr_layer_surface_v1_destroy(l->layer_surface);
 	}
 
+	// clean ext-workspaces grouplab
+	dwl_ext_workspace_group_output_leave(m->ext_group, m->wlr_output);
+	dwl_ext_workspace_group_destroy(m->ext_group);
+	cleanup_workspaces_by_monitor(m);
+
 	wl_list_remove(&m->destroy.link);
 	wl_list_remove(&m->frame.link);
 	wl_list_remove(&m->link);
@@ -3366,8 +3373,6 @@ void createmon(struct wl_listener *listener, void *data) {
 		}
 	}
 
-	printstatus();
-
 	/* The xdg-protocol specifies:
 	 *
 	 * If the fullscreened surface is not opaque, the compositor must make
@@ -3391,6 +3396,15 @@ void createmon(struct wl_listener *listener, void *data) {
 		wlr_output_layout_add_auto(output_layout, wlr_output);
 	else
 		wlr_output_layout_add(output_layout, wlr_output, m->m.x, m->m.y);
+
+	m->ext_group = dwl_ext_workspace_group_create(ext_manager);
+	dwl_ext_workspace_group_output_enter(m->ext_group, m->wlr_output);
+
+	for (i = 1; i <= LENGTH(tags); i++) {
+		add_workspace_by_tag(i, m);
+	}
+
+	printstatus();
 }
 
 void // fix for 0.5
@@ -4754,14 +4768,87 @@ void pointerfocus(Client *c, struct wlr_surface *surface, double sx, double sy,
 	wlr_seat_pointer_notify_motion(seat, time, sx, sy);
 }
 
-void // 17
-printstatus(void) {
-	Monitor *m = NULL;
+unsigned int get_tag_status(unsigned int tag) {
+	Client *c;
+	unsigned int status = 0;
+	wl_list_for_each(c, &clients, link) {
+		if (c->tags & 1 << (tag - 1) & TAGMASK) {
+			if (c->isurgent) {
+				status = 2;
+				break;
+			}
+			status = 1;
+		}
+	}
+	return status;
+}
+
+unsigned int get_tags_first_tag_num(unsigned int source_tags) {
+	unsigned int i, tag;
+	tag = 0;
+
+	if (!source_tags) {
+		return selmon->pertag->curtag;
+	}
+
+	for (i = 0; !(tag & 1) && source_tags != 0 && i < LENGTH(tags); i++) {
+		tag = source_tags >> i;
+	}
+
+	if (i == 1) {
+		return 1;
+	} else if (i > 9) {
+		return 9;
+	} else {
+		return i;
+	}
+}
+
+void dwl_ext_workspace_printstatus(Monitor *m) {
+	unsigned int current_tag;
+	struct workspace *w;
+	unsigned int tag_status = 0;
+	bool is_active = false;
+
+	current_tag = get_tags_first_tag_num(m->tagset[m->seltags]);
+
+	wl_list_for_each(w, &workspaces, link) {
+		if (w && w->m == m) {
+			is_active = (w->tag == current_tag) || m->isoverview;
+			tag_status = get_tag_status(w->tag);
+			if (is_active) {
+				dwl_ext_workspace_set_urgent(w->ext_workspace, false);
+				dwl_ext_workspace_set_hidden(w->ext_workspace, false);
+				dwl_ext_workspace_set_active(w->ext_workspace, true);
+			} else if (tag_status == 2) {
+				dwl_ext_workspace_set_hidden(w->ext_workspace, false);
+				dwl_ext_workspace_set_active(w->ext_workspace, false);
+				dwl_ext_workspace_set_urgent(w->ext_workspace, true);
+			} else if (tag_status == 1) {
+				dwl_ext_workspace_set_urgent(w->ext_workspace, false);
+				dwl_ext_workspace_set_hidden(w->ext_workspace, false);
+				dwl_ext_workspace_set_active(w->ext_workspace, false);
+			} else {
+				dwl_ext_workspace_set_urgent(w->ext_workspace, false);
+				dwl_ext_workspace_set_active(w->ext_workspace, false);
+				dwl_ext_workspace_set_hidden(w->ext_workspace, true);
+			}
+		}
+	}
+}
+
+void printstatus(void) {
+	Monitor *m;
 	wl_list_for_each(m, &mons, link) {
 		if (!m->wlr_output->enabled) {
 			continue;
 		}
-		dwl_ipc_output_printstatus(m); // 更新waybar上tag的状态 这里很关键
+
+		// Update workspace active states
+		dwl_ext_workspace_printstatus(m);
+
+		// Update IPC output status
+		dwl_ipc_output_printstatus(m);
 	}
 }
 
@@ -6255,6 +6342,9 @@ void setup(void) {
 		wlr_xdg_foreign_registry_create(dpy);
 	wlr_xdg_foreign_v1_create(dpy, foreign_registry);
 	wlr_xdg_foreign_v2_create(dpy, foreign_registry);
+
+	// ext-workspace协议
+	workspaces_init();
 #ifdef XWAYLAND
 	/*
 	 * Initialise the XWayland X server.
@@ -6584,7 +6674,7 @@ void increase_proportion(const Arg *arg) {
 
 // 显示所有tag 或 跳转到聚焦窗口的tag
 void toggleoverview(const Arg *arg) {
-
+	int i;
 	Client *c;
 
 	if (selmon->isoverview && ov_tab_mode && arg->i != -1 && selmon->sel) {
@@ -6595,6 +6685,18 @@ void toggleoverview(const Arg *arg) {
 	selmon->isoverview ^= 1;
 	unsigned int target;
 	unsigned int visible_client_number = 0;
+
+	if (selmon->isoverview) {
+		for (i = 1; i <= LENGTH(tags); i++) {
+			remove_workspace_by_tag(i, selmon);
+		}
+		add_workspace_by_tag(0, selmon);
+	} else {
+		remove_workspace_by_tag(0, selmon);
+		for (i = 1; i <= LENGTH(tags); i++) {
+			add_workspace_by_tag(i, selmon);
+		}
+	}
 
 	if (selmon->isoverview) {
 		wl_list_for_each(c, &clients,

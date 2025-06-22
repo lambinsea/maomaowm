@@ -69,6 +69,7 @@ endif
 executable('maomao',
   'src/maomao.c',
   'src/common/util.c',
+  'src/common/transaction.c',
   wayland_sources,
   dependencies : [
     libm,
