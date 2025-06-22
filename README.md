@@ -1,6 +1,6 @@
 # Maomaowm
 
-This project's development is based on [dwl](https://codeberg.org/dwl/dwl/),
+This project's development is based on [dwl](https://codeberg.org/dwl/dwl/).
 
 "Since many people have asked about the meaning of this compositor's name, 'Maomao' is an online alias I've been using for years - it comes from the first two characters of the Chinese word for 'caterpillar' (毛毛虫). You can basically think of it as meaning 'caterpillar'.
 
@@ -8,7 +8,7 @@ This project's development is based on [dwl](https://codeberg.org/dwl/dwl/),
    - *Maomao* is as lightweight as *dwl*, and its build can be completed within few seconds. Despite this, *maomao* does not compromise on functionality.  
 
 2. **Feature Highlights**  
-   - Besides basic WM functionality, Maomao provides:
+   - In addition to basic WM functionality, Maomao provides:
      - Base tag not workspace (supports separate window layouts for each tag)
      - Smooth and customizable complete animations (window open/move/close, tag enter/leave)
      - Excellent input method support (text input v2/v3)
@@ -97,7 +97,7 @@ Refer to the [wiki](https://github.com/DreamMaoMao/maomaowm/wiki/)
 # NixOS + Home-manager
 
 The repo contains a flake that provides a NixOS module and a home-manager module for maomaowm.
-Use the NixOS module to install maomaowm with other necessary components of a working wayland environment.
+Use the NixOS module to install maomaowm with other necessary components of a working Wayland environment.
 Use the home-manager module to declare configuration and autostart for maomaowm.
 
 Here's an example of using the modules in a flake:
@@ -167,7 +167,7 @@ Here's an example of using the modules in a flake:
 }
 ```
 
-# Thanks to Reference Repositories
+# Thanks to These Reference Repositories
 
 - https://gitlab.freedesktop.org/wlroots/wlroots - Implementation of Wayland protocol
 
